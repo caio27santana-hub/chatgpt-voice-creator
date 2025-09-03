@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Send, Bot, User } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   id: string;
@@ -38,17 +39,35 @@ const ChatBot = () => {
     setInputValue('');
     setIsLoading(true);
 
-    // Simulate AI response (replace with actual AI integration later)
-    setTimeout(() => {
+    try {
+      const { data, error } = await supabase.functions.invoke('ai-chat', {
+        body: { message: inputValue }
+      });
+
+      if (error) {
+        throw error;
+      }
+
       const botResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: `Recebi sua mensagem: "${userMessage.content}". Como posso ajudá-lo com isso?`,
+        content: data.response || 'Desculpe, não consegui processar sua mensagem.',
         sender: 'bot',
         timestamp: new Date()
       };
+
       setMessages(prev => [...prev, botResponse]);
+    } catch (error) {
+      console.error('Error calling AI:', error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Tente novamente.',
+        sender: 'bot',
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
