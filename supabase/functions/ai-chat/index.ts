@@ -13,47 +13,42 @@ serve(async (req) => {
 
   try {
     const { message } = await req.json();
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    const geminiApiKey = Deno.env.get('GEMINI_API_KEY');
 
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    if (!geminiApiKey) {
+      throw new Error('Gemini API key not configured');
     }
 
-    console.log('Sending message to OpenAI:', message);
+    console.log('Sending message to Gemini:', message);
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: 'Você é um assistente de IA útil e amigável. Responda em português de forma clara e concisa.'
-          },
-          {
-            role: 'user',
-            content: message
-          }
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
+        contents: [{
+          parts: [{
+            text: `Você é um assistente de IA útil e amigável. Responda em português de forma clara e concisa.\n\nUsuário: ${message}`
+          }]
+        }],
+        generationConfig: {
+          maxOutputTokens: 500,
+          temperature: 0.7,
+        }
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Gemini API error:', errorData);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    const aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Desculpe, não consegui gerar uma resposta.';
 
-    console.log('OpenAI response:', aiResponse);
+    console.log('Gemini response:', aiResponse);
 
     return new Response(
       JSON.stringify({ response: aiResponse }),
